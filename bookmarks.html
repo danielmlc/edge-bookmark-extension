@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>书签管理器</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .bookmark-item {
+      margin: 5px 0;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+    }
+    .bookmark-folder {
+      font-weight: bold;
+      color: #333;
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+    }
+    .bookmark-link {
+      color: #0066cc;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .bookmark-link:hover {
+      text-decoration: underline;
+      background-color: #f5f5f5;
+    }
+    .favicon {
+      width: 16px;
+      height: 16px;
+      margin-right: 5px;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-bottom: none;
+      margin-bottom: -1px;
+    }
+    .tab.active {
+      background-color: #fff;
+      border-color: #ddd;
+      border-bottom-color: #fff;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .nested-bookmarks {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>书签管理器</h2>
+    <div id="tabs" class="tabs"></div>
+    <div id="tab-contents"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 
