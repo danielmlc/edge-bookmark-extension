@@ -1,5 +1,5 @@
-chrome.action.onClicked.addListener((tab) => {
+chrome.action.onClicked.addListener(function() {
   chrome.tabs.create({
     url: 'bookmarks.html'
   });
-}); 
+});

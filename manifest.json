@@ -4,14 +4,14 @@
   "version": "1.0",
   "description": "一个简单的书签管理器，支持自动归类、全局搜索功能",
   "permissions": [
-    "bookmarks"
+    "bookmarks",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*.bing.com/*"
   ],
   "action": {
-    "default_icon": {
-      "16": "images/icon16.png",
-      "48": "images/icon48.png",
-      "128": "images/icon128.png"
-    }
+    "default_title": "Bookmarks Manager"
   },
   "icons": {
     "16": "images/icon16.png",
@@ -20,5 +20,9 @@
   },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "web_accessible_resources": [{
+    "resources": ["bookmarks.html", "style.css", "bookmarks.js"],
+    "matches": ["<all_urls>"]
+  }]
 } 
