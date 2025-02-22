@@ -200,6 +200,126 @@ function loadBookmarks(folderId = '1') {
     });
   });
 }
+// 创建上下文菜单
+function createContextMenu() {
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  menu.innerHTML = `
+    <div class="menu-item edit">
+      <img src="images/edit-icon.png" alt="edit" class="menu-icon">
+      <span>编辑</span>
+    </div>
+    <div class="menu-item delete">
+      <img src="images/delete-icon.png" alt="delete" class="menu-icon">
+      <span>删除</span>
+    </div>
+  `;
+  return menu;
+}
+
+// 显示上下文菜单
+function showContextMenu(e, bookmark) {
+  e.preventDefault();
+  
+  // 移除任何已存在的上下文菜单
+  const existingMenu = document.querySelector('.context-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+  
+  const menu = createContextMenu();
+  document.body.appendChild(menu);
+  
+  // 调整菜单位置
+  const x = e.clientX;
+  const y = e.clientY;
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  
+  // 编辑选项点击事件
+  menu.querySelector('.edit').addEventListener('click', () => {
+    menu.remove();
+    showEditDialog(bookmark, bookmark.url ? 'bookmark' : 'folder');
+  });
+  
+  // 删除选项点击事件
+  menu.querySelector('.delete').addEventListener('click', () => {
+    menu.remove();
+    deleteBookmark(bookmark);
+  });
+  
+  // 点击其他地方关闭菜单
+  document.addEventListener('click', function closeMenu(e) {
+    if (!menu.contains(e.target)) {
+      menu.remove();
+      document.removeEventListener('click', closeMenu);
+    }
+  });
+}
+
+// 删除书签或文件夹
+function deleteBookmark(bookmark) {
+  if (confirm(`确定要删除 "${bookmark.title}" ${bookmark.url ? '书签' : '文件夹'} 吗？`)) {
+    chrome.bookmarks.removeTree(bookmark.id, () => {
+      loadBookmarks(bookmark.parentId);
+    });
+  }
+}
+
+// 修改createBookmarkElement函数中的右键事件处理
+function createBookmarkElement(bookmark) {
+  const div = document.createElement('div');
+  div.className = `bookmark-item ${bookmark.url ? '' : 'folder'}`;
+  
+  if (bookmark.url) {
+    const img = document.createElement('img');
+    img.className = 'bookmark-icon';
+    img.src = getFaviconUrl(bookmark.url);
+    img.alt = 'icon';
+    img.onerror = function() {
+      this.src = 'images/default-favicon.png';
+    };
+    
+    const p = document.createElement('p');
+    p.className = 'bookmark-title';
+    p.textContent = bookmark.title;
+    
+    div.appendChild(img);
+    div.appendChild(p);
+    
+    div.addEventListener('click', () => {
+      window.open(bookmark.url, '_blank');
+    });
+    
+    // 更新右键菜单事件
+    div.addEventListener('contextmenu', (e) => {
+      showContextMenu(e, bookmark);
+    });
+  } else {
+    const img = document.createElement('img');
+    img.className = 'bookmark-icon';
+    img.src = 'images/folder-icon.png';
+    img.alt = 'folder';
+    
+    const p = document.createElement('p');
+    p.className = 'bookmark-title';
+    p.textContent = bookmark.title;
+    
+    div.appendChild(img);
+    div.appendChild(p);
+    
+    div.addEventListener('click', () => {
+      loadBookmarks(bookmark.id);
+    });
+    
+    // 更新右键菜单事件
+    div.addEventListener('contextmenu', (e) => {
+      showContextMenu(e, bookmark);
+    });
+  }
+  
+  return div;
+}
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {

@@ -14,7 +14,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.4);
 }
 
 .bookmarks-grid {
@@ -127,4 +127,40 @@ body {
 
 .cancel-button:hover {
   background-color: #e8e8e8;
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  padding: 5px 0;
+  min-width: 150px;
+  z-index: 1000;
+}
+
+.menu-item {
+  padding: 8px 15px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}
+
+.menu-item.delete {
+  color: #dc3545;
+}
+
+.menu-item.delete:hover {
+  background-color: #fff5f5;
 }
