@@ -117,89 +117,6 @@ function showEditDialog(bookmark, type) {
   });
 }
 
-// 创建书签元素
-function createBookmarkElement(bookmark) {
-  const div = document.createElement('div');
-  div.className = `bookmark-item ${bookmark.url ? '' : 'folder'}`;
-  
-  if (bookmark.url) {
-    const img = document.createElement('img');
-    img.className = 'bookmark-icon';
-    img.src = getFaviconUrl(bookmark.url);
-    img.alt = 'icon';
-    img.onerror = function() {
-      this.src = 'images/default-favicon.png';
-    };
-    
-    const p = document.createElement('p');
-    p.className = 'bookmark-title';
-    p.textContent = bookmark.title;
-    
-    div.appendChild(img);
-    div.appendChild(p);
-    
-    div.addEventListener('click', () => {
-      window.open(bookmark.url, '_blank');
-    });
-    
-    // 添加右键菜单
-    div.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showEditDialog(bookmark, 'bookmark');
-    });
-  } else {
-    const img = document.createElement('img');
-    img.className = 'bookmark-icon';
-    img.src = 'images/folder-icon.png';
-    img.alt = 'folder';
-    
-    const p = document.createElement('p');
-    p.className = 'bookmark-title';
-    p.textContent = bookmark.title;
-    
-    div.appendChild(img);
-    div.appendChild(p);
-    
-    div.addEventListener('click', () => {
-      loadBookmarks(bookmark.id);
-    });
-    
-    // 添加右键菜单
-    div.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showEditDialog(bookmark, 'folder');
-    });
-  }
-  
-  return div;
-}
-
-// 加载书签
-function loadBookmarks(folderId = '1') {
-  chrome.bookmarks.getChildren(folderId, (bookmarks) => {
-    const container = document.getElementById('bookmarks-grid');
-    container.innerHTML = '';
-    
-    if (folderId !== '1') {
-      const backButton = document.createElement('div');
-      backButton.className = 'bookmark-item';
-      backButton.innerHTML = `
-        <img class="bookmark-icon" src="images/back-icon.png" alt="back">
-        <p class="bookmark-title">返回上级</p>
-      `;
-      backButton.addEventListener('click', () => {
-        chrome.bookmarks.get(folderId, (folder) => {
-          loadBookmarks(folder[0].parentId);
-        });
-      });
-      container.appendChild(backButton);
-    }
-    
-    bookmarks.forEach(bookmark => {
-      container.appendChild(createBookmarkElement(bookmark));
-    });
-  });
-}
 // 创建上下文菜单
 function createContextMenu() {
   const menu = document.createElement('div');
@@ -266,16 +183,22 @@ function deleteBookmark(bookmark) {
   }
 }
 
-// 修改createBookmarkElement函数中的右键事件处理
+// 创建书签元素 - 添加拖拽功能
 function createBookmarkElement(bookmark) {
   const div = document.createElement('div');
   div.className = `bookmark-item ${bookmark.url ? '' : 'folder'}`;
+  div.setAttribute('draggable', 'true');
+  div.dataset.id = bookmark.id;
+  div.dataset.parentId = bookmark.parentId;
+  div.dataset.index = bookmark.index;
   
   if (bookmark.url) {
     const img = document.createElement('img');
     img.className = 'bookmark-icon';
     img.src = getFaviconUrl(bookmark.url);
     img.alt = 'icon';
+    
+    // 如果获取不到网站图标，使用本地默认图标
     img.onerror = function() {
       this.src = 'images/default-favicon.png';
     };
@@ -318,7 +241,118 @@ function createBookmarkElement(bookmark) {
     });
   }
   
+  // 添加拖拽事件监听器
+  div.addEventListener('dragstart', handleDragStart);
+  div.addEventListener('dragover', handleDragOver);
+  div.addEventListener('dragenter', handleDragEnter);
+  div.addEventListener('dragleave', handleDragLeave);
+  div.addEventListener('drop', handleDrop);
+  div.addEventListener('dragend', handleDragEnd);
+  
   return div;
+}
+
+// 拖拽变量
+let draggedItem = null;
+
+// 处理拖拽开始
+function handleDragStart(e) {
+  // 如果是左键单击事件，我们忽略它，让正常的点击事件处理
+  if (e.button === 0 && e.type === 'click') {
+    return;
+  }
+  
+  draggedItem = this;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', this.dataset.id);
+  
+  // 添加拖拽样式
+  setTimeout(() => {
+    this.classList.add('dragging');
+  }, 0);
+}
+
+// 处理拖拽经过
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault(); // 允许放置
+  }
+  e.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+// 处理拖拽进入
+function handleDragEnter(e) {
+  this.classList.add('drag-over');
+}
+
+// 处理拖拽离开
+function handleDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+// 处理放置
+function handleDrop(e) {
+  e.stopPropagation(); // 阻止浏览器默认行为
+  
+  if (draggedItem !== this) {
+    const draggedId = e.dataTransfer.getData('text/plain');
+    const draggedElement = document.querySelector(`.bookmark-item[data-id="${draggedId}"]`);
+    const targetId = this.dataset.id;
+    const parentId = this.dataset.parentId;
+    
+    // 这里是修改部分：直接使用目标元素的索引作为新位置
+    // 这样目标元素及其后面的所有元素都会自动向后移动一个位置
+    let newIndex = parseInt(this.dataset.index);
+    
+    // 使用Chrome bookmarks API移动书签
+    chrome.bookmarks.move(draggedId, {
+      parentId: parentId,
+      index: newIndex
+    }, () => {
+      // 重新加载书签以反映新顺序
+      loadBookmarks(parentId);
+    });
+  }
+  
+  return false;
+}
+
+// 处理拖拽结束
+function handleDragEnd(e) {
+  // 移除所有拖拽相关的样式
+  const items = document.querySelectorAll('.bookmark-item');
+  items.forEach(item => {
+    item.classList.remove('dragging');
+    item.classList.remove('drag-over');
+  });
+}
+
+// 加载书签
+function loadBookmarks(folderId = '1') {
+  chrome.bookmarks.getChildren(folderId, (bookmarks) => {
+    const container = document.getElementById('bookmarks-grid');
+    container.innerHTML = '';
+    
+    if (folderId !== '1') {
+      const backButton = document.createElement('div');
+      backButton.className = 'bookmark-item back-button';
+      backButton.innerHTML = `
+        <img class="bookmark-icon" src="images/back-icon.png" alt="back">
+        <p class="bookmark-title">返回上级</p>
+      `;
+      backButton.addEventListener('click', () => {
+        chrome.bookmarks.get(folderId, (folder) => {
+          loadBookmarks(folder[0].parentId);
+        });
+      });
+      container.appendChild(backButton);
+    }
+    
+    bookmarks.forEach(bookmark => {
+      container.appendChild(createBookmarkElement(bookmark));
+    });
+  });
 }
 
 // 初始化
