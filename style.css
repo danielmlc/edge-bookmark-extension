@@ -6,6 +6,22 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   font-family: Arial, sans-serif;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: var(--background-filter, brightness(1.05) contrast(1.1) saturate(1.2));
+  z-index: -1;
 }
 
 .container {
@@ -14,7 +30,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgba(255, 255, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .bookmarks-grid {
@@ -53,6 +69,13 @@ body {
   border: 2px dashed #4a90e2;
   padding: 13px; /* 减少2px的padding来保持整体尺寸不变 */
   background-color: #f7faff;
+}
+
+/* 文件夹拖拽目标特殊样式 */
+.bookmark-item.folder-drop-target {
+  background-color: #e6f7ff;
+  box-shadow: 0 0 8px rgba(74, 144, 226, 0.6);
+  transform: scale(1.05);
 }
 
 .back-button {
@@ -182,4 +205,198 @@ body {
 
 .menu-item.delete:hover {
   background-color: #fff5f5;
+}
+
+/* 提示信息样式 */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  opacity: 0;
+  transition: transform 0.3s, opacity 0.3s;
+  z-index: 9999;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  max-width: 80%;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 新建文件夹按钮样式 */
+.add-folder-button {
+  background-color: #f0f8ff;
+  border: 2px dashed #4a90e2;
+  transition: all 0.2s;
+}
+
+.add-folder-button:hover {
+  background-color: #e6f2ff;
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.add-folder-button img {
+  opacity: 0.7;
+}
+
+/* 输入错误样式 */
+.input-error {
+  animation: shake 0.5s;
+  border-color: #e74c3c !important;
+  background-color: rgba(231, 76, 60, 0.05);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+/* 滤镜控制面板样式 */
+.filter-panel {
+  position: fixed;
+  top: 20px;
+  right: 0;
+  max-width: 280px;
+  z-index: 100;
+  transition: transform 0.3s, opacity 0.3s;
+  transform-origin: top right;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.panel-header {
+  background-color: rgba(74, 144, 226, 0.9);
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  cursor: pointer;
+  user-select: none;
+  color: white;
+}
+
+.toggle-icon {
+  margin-right: 10px;
+  font-size: 18px;
+  transition: transform 0.3s;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.filter-panel.collapsed .toggle-icon {
+  transform: rotate(90deg);
+}
+
+.filter-panel.collapsed .filter-controls {
+  display: none;
+}
+
+.filter-controls {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 15px;
+  border-bottom-left-radius: 8px;
+}
+
+.filter-control {
+  margin-bottom: 12px;
+}
+
+.filter-control label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-control input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  background: #ddd;
+  outline: none;
+  border-radius: 3px;
+  flex: 1;
+}
+
+.filter-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4a90e2;
+  cursor: pointer;
+}
+
+.filter-control input[type="color"] {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 4px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.slider-value {
+  font-size: 12px;
+  color: #666;
+  min-width: 30px;
+  text-align: right;
+}
+
+.reset-button {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.2s;
+}
+
+.reset-button:hover {
+  background-color: #e0e0e0;
+}
+
+/* 颜色叠加效果 */
+:root {
+  --overlay-color: #ffffff;
+  --overlay-opacity: 0;
+  --background-filter: brightness(1.05) contrast(1.1) saturate(1.2);
+}
+
+.color-overlay::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--overlay-color);
+  opacity: var(--overlay-opacity);
+  z-index: -1;
+  pointer-events: none;
 }

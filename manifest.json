@@ -22,7 +22,7 @@
     "service_worker": "background.js"
   },
   "web_accessible_resources": [{
-    "resources": ["bookmarks.html", "style.css", "bookmarks.js"],
+    "resources": ["bookmarks.html", "style.css", "bookmarks.js", "images/*"],
     "matches": ["<all_urls>"]
   }]
-} 
+}
