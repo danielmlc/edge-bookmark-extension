@@ -1,4 +1,333 @@
-// 默认的滤镜设置
+// 记录书签访问历史
+function recordBookmarkVisit(bookmark) {
+  try {
+    // 获取当前存储的访问历史
+    let visitHistory = localStorage.getItem('bookmark_visit_history');
+    let bookmarks = visitHistory ? JSON.parse(visitHistory) : [];
+    
+    // 检查书签是否已存在于历史中
+    const existingIndex = bookmarks.findIndex(item => item.id === bookmark.id);
+    
+    if (existingIndex !== -1) {
+      // 如果存在，将其移除，稍后将其重新添加到最前面
+      bookmarks.splice(existingIndex, 1);
+    }
+    
+    // 添加到数组开头（最新的在前面）
+    bookmarks.unshift({
+      id: bookmark.id,
+      title: bookmark.title,
+      url: bookmark.url,
+      timestamp: Date.now()
+    });
+    
+    // 获取存储的最大记录数
+    const maxRecords = parseInt(localStorage.getItem('bookmark_recent_count') || 12) * 2; // 存储的记录数应比显示的多
+    
+    // 只保留最近的记录
+    if (bookmarks.length > maxRecords) {
+      bookmarks = bookmarks.slice(0, maxRecords);
+    }
+    
+    // 保存回本地存储
+    localStorage.setItem('bookmark_visit_history', JSON.stringify(bookmarks));
+    
+    // 更新显示
+    displayRecentBookmarks();
+  } catch (error) {
+    console.error('记录书签访问历史时出错:', error);
+  }
+}
+
+// 显示最近访问的书签
+function displayRecentBookmarks() {
+  const container = document.getElementById('recent-bookmarks');
+  if (!container) return;
+  
+  // 清空容器
+  container.innerHTML = '';
+  
+  // 添加标题
+  const title = document.createElement('span');
+  title.className = 'recent-title';
+  title.textContent = '常用网站:';
+  container.appendChild(title);
+  
+  try {
+    // 获取访问历史
+    const visitHistory = localStorage.getItem('bookmark_visit_history');
+    
+    if (visitHistory) {
+      const bookmarks = JSON.parse(visitHistory);
+      
+      if (bookmarks.length === 0) {
+        // 如果没有历史记录，显示提示
+        const emptyMsg = document.createElement('span');
+        emptyMsg.textContent = '暂无访问记录';
+        emptyMsg.style.color = '#999';
+        emptyMsg.style.fontStyle = 'italic';
+        container.appendChild(emptyMsg);
+        return;
+      }
+      
+      // 获取设置的显示数量
+      const maxDisplayCount = localStorage.getItem('bookmark_recent_count') || 12;
+      
+      // 显示最近访问的数量
+      const displayCount = Math.min(bookmarks.length, parseInt(maxDisplayCount));
+      
+      // 添加每个书签
+      for (let i = 0; i < displayCount; i++) {
+        const bookmark = bookmarks[i];
+        
+        // 创建书签元素
+        const bookmarkElement = document.createElement('div');
+        bookmarkElement.className = 'recent-bookmark';
+        bookmarkElement.title = bookmark.title; // 使用原生的title属性显示提示
+        
+        // 创建图标
+        const icon = document.createElement('img');
+        icon.src = getFaviconUrl(bookmark.url);
+        icon.alt = bookmark.title;
+        icon.onerror = function() {
+          this.src = 'images/default-favicon.png';
+        };
+        
+        // 点击事件 - 打开书签
+        bookmarkElement.addEventListener('click', () => {
+          window.open(bookmark.url, '_blank');
+        });
+        
+        // 构建元素
+        bookmarkElement.appendChild(icon);
+        container.appendChild(bookmarkElement);
+      }
+    } else {
+      // 如果没有历史记录，显示提示
+      const emptyMsg = document.createElement('span');
+      emptyMsg.textContent = '暂无访问记录';
+      emptyMsg.style.color = '#999';
+      emptyMsg.style.fontStyle = 'italic';
+      container.appendChild(emptyMsg);
+    }
+  } catch (error) {
+    console.error('显示最近访问书签时出错:', error);
+    
+    // 出错时显示错误消息
+    const errorMsg = document.createElement('span');
+    errorMsg.textContent = '加载历史记录失败';
+    errorMsg.style.color = '#c00';
+    container.appendChild(errorMsg);
+  }
+}// 搜索书签函数
+function searchBookmarks(query) {
+  // 确保搜索查询不为空
+  if (!query || query.trim() === '') {
+    hideSearchResults();
+    return;
+  }
+  
+  query = query.toLowerCase().trim();
+  
+  chrome.bookmarks.search(query, (results) => {
+    displaySearchResults(results, query);
+  });
+}
+
+// 显示搜索结果
+function displaySearchResults(results, query) {
+  const resultsContainer = document.getElementById('search-results');
+  resultsContainer.innerHTML = '';
+  
+  // 如果没有结果，显示提示
+  if (results.length === 0) {
+    const noResults = document.createElement('div');
+    noResults.className = 'search-no-results';
+    noResults.textContent = '没有找到匹配的书签';
+    resultsContainer.appendChild(noResults);
+    resultsContainer.classList.add('show');
+    return;
+  }
+  
+  // 最多显示10个结果
+  const displayResults = results.slice(0, 10);
+  
+  // 创建结果列表
+  displayResults.forEach(bookmark => {
+    const resultItem = document.createElement('div');
+    resultItem.className = `search-result-item ${bookmark.url ? '' : 'folder'}`;
+    resultItem.dataset.id = bookmark.id;
+    resultItem.dataset.url = bookmark.url || '';
+    
+    // 创建图标
+    const icon = document.createElement('img');
+    icon.className = 'search-result-icon';
+    
+    if (bookmark.url) {
+      icon.src = getFaviconUrl(bookmark.url);
+      icon.onerror = function() {
+        this.src = 'images/default-favicon.png';
+      };
+    } else {
+      icon.src = 'images/folder-icon.png';
+    }
+    
+    // 创建内容容器
+    const content = document.createElement('div');
+    content.className = 'search-result-content';
+    
+    // 创建标题，高亮匹配关键词
+    const title = document.createElement('p');
+    title.className = 'search-result-title';
+    
+    // 简单的关键词高亮逻辑
+    const titleText = bookmark.title;
+    title.textContent = titleText;
+    
+    content.appendChild(title);
+    
+    // 获取并显示书签路径
+    getBookmarkPath(bookmark.id, (path) => {
+      const pathText = path.map(item => item.title).join(' > ');
+      
+      // 创建路径行
+      const pathElement = document.createElement('p');
+      pathElement.className = 'search-result-path';
+      pathElement.textContent = pathText;
+      content.appendChild(pathElement);
+    });
+    
+    // 添加点击事件
+    resultItem.addEventListener('click', () => {
+      if (bookmark.url) {
+        // 如果是书签，打开URL
+        window.open(bookmark.url, '_blank');
+        // 记录访问历史
+        recordBookmarkVisit(bookmark);
+      } else {
+        // 如果是文件夹，导航到该文件夹
+        loadBookmarks(bookmark.id);
+      }
+      
+      // 隐藏搜索结果
+      hideSearchResults();
+      
+      // 清空搜索框
+      document.getElementById('bookmark-search').value = '';
+    });
+    
+    resultItem.appendChild(icon);
+    resultItem.appendChild(content);
+    resultsContainer.appendChild(resultItem);
+  });
+  
+  // 显示结果容器
+  resultsContainer.classList.add('show');
+}
+
+// 隐藏搜索结果
+function hideSearchResults() {
+  const resultsContainer = document.getElementById('search-results');
+  resultsContainer.classList.remove('show');
+}
+
+// 获取书签路径（复用了导航路径的逻辑）
+function getBookmarkPath(bookmarkId, callback) {
+  const path = [];
+  
+  function getParentFolder(id) {
+    chrome.bookmarks.get(id, (bookmarks) => {
+      if (bookmarks && bookmarks.length > 0) {
+        const bookmark = bookmarks[0];
+        path.unshift({ id: bookmark.id, title: bookmark.title });
+        
+        // 如果还有父文件夹且不是根文件夹
+        if (bookmark.parentId && bookmark.parentId !== '0' && bookmark.parentId !== '1') {
+          getParentFolder(bookmark.parentId);
+        } else {
+          // 如果到达根文件夹，返回结果
+          callback(path);
+        }
+      } else {
+        // 如果出错，返回当前路径
+        callback(path);
+      }
+    });
+  }
+  
+  getParentFolder(bookmarkId);
+}
+
+// 获取完整导航路径
+function getBreadcrumbPath(folderId, callback) {
+  const path = [];
+  
+  function getParentFolder(id) {
+    if (id === '0' || id === '1') {
+      // 达到书签栏根节点，结束递归
+      path.unshift({ id: '1', title: '书签栏' });
+      callback(path);
+      return;
+    }
+    
+    chrome.bookmarks.get(id, (folder) => {
+      if (folder && folder.length > 0) {
+        path.unshift({ id: folder[0].id, title: folder[0].title });
+        getParentFolder(folder[0].parentId);
+      } else {
+        // 如果存在问题，返回当前路径
+        callback(path);
+      }
+    });
+  }
+  
+  getParentFolder(folderId);
+}
+
+// 更新导航路径显示
+function updateBreadcrumb(folderId) {
+  const breadcrumbContainer = document.getElementById('bookmark-breadcrumb');
+  
+  // 先清空容器
+  breadcrumbContainer.innerHTML = '';
+  
+  // 显示加载中状态
+  breadcrumbContainer.textContent = '加载中...';
+  
+  // 获取完整路径
+  getBreadcrumbPath(folderId, (path) => {
+    breadcrumbContainer.innerHTML = '';
+    
+    path.forEach((folder, index) => {
+      const item = document.createElement('span');
+      item.className = 'breadcrumb-item';
+      
+      if (index < path.length - 1) {
+        // 如果不是最后一项，可以点击
+        const link = document.createElement('span');
+        link.className = 'breadcrumb-link';
+        link.textContent = folder.title;
+        link.addEventListener('click', () => {
+          loadBookmarks(folder.id);
+        });
+        item.appendChild(link);
+      } else {
+        // 当前文件夹不可点击
+        item.textContent = folder.title;
+      }
+      
+      breadcrumbContainer.appendChild(item);
+      
+      // 添加分隔符，除了最后一项
+      if (index < path.length - 1) {
+        const separator = document.createElement('span');
+        separator.className = 'breadcrumb-separator';
+        separator.textContent = '>';
+        breadcrumbContainer.appendChild(separator);
+      }
+    });
+  });
+}// 默认的滤镜设置
 const DEFAULT_FILTER_SETTINGS = {
   brightness: '1.05',
   contrast: '1.1',
@@ -60,8 +389,8 @@ async function setBingDailyBackground() {
     const imageUrl = 'https://www.bing.com' + data.images[0].url;
     document.body.style.backgroundImage = `url(${imageUrl})`;
     
-    // 添加滤镜控制界面
-    createFilterControls();
+    // 添加设置面板界面
+    createSettingsPanel();
     
     // 将滤镜设置应用到新创建的滤镜控件上
     applyFilterSettingsToDOM(filterConfig);
@@ -80,8 +409,8 @@ async function setBingDailyBackground() {
       const storedColorSettings = localStorage.getItem('bookmark_color_settings');
       const colorSettings = storedColorSettings ? JSON.parse(storedColorSettings) : DEFAULT_COLOR_SETTINGS;
       
-      // 创建滤镜控件
-      createFilterControls();
+      // 创建设置面板
+      createSettingsPanel();
       
       // 应用滤镜设置
       applyFilterSettingsToDOM({
@@ -296,7 +625,11 @@ function createBookmarkElement(bookmark) {
     div.appendChild(p);
     
     div.addEventListener('click', () => {
+      // 打开书签链接
       window.open(bookmark.url, '_blank');
+      
+      // 记录访问历史
+      recordBookmarkVisit(bookmark);
     });
     
     // 更新右键菜单事件
@@ -382,6 +715,52 @@ function handleDragLeave(e) {
   this.classList.remove('folder-drop-target');
 }
 
+// 处理"返回上级"按钮的拖拽进入
+function handleBackButtonDragEnter(e) {
+  this.classList.add('drag-over');
+  this.classList.add('back-button-drop-target');
+}
+
+// 处理"返回上级"按钮的拖拽离开
+function handleBackButtonDragLeave(e) {
+  this.classList.remove('drag-over');
+  this.classList.remove('back-button-drop-target');
+}
+
+// 处理"返回上级"按钮的放置
+function handleBackButtonDrop(e) {
+  e.stopPropagation(); // 阻止事件冒泡
+  e.preventDefault(); // 阻止默认行为
+  
+  if (draggedItem) {
+    const draggedId = e.dataTransfer.getData('text/plain');
+    const parentId = this.dataset.parentId; // 获取上级文件夹ID
+    
+    if (draggedId && parentId) {
+      // 将书签移动到上级文件夹
+      chrome.bookmarks.move(draggedId, {
+        parentId: parentId,
+        index: 0 // 放在文件夹的最前面
+      }, () => {
+        // 移动成功，显示提示信息
+        showToast('已将书签移动到上级文件夹');
+        
+        // 重新加载当前文件夹的内容
+        loadBookmarks(currentViewingFolderId);
+      });
+    }
+  }
+  
+  // 移除所有拖拽相关的样式
+  this.classList.remove('drag-over');
+  this.classList.remove('back-button-drop-target');
+  
+  return false;
+}
+
+// 全局变量存储当前文件夹ID
+let currentViewingFolderId = '1'; // 默认为根文件夹
+
 // 处理放置
 function handleDrop(e) {
   e.stopPropagation(); // 阻止浏览器默认行为
@@ -402,22 +781,9 @@ function handleDrop(e) {
         // 移动成功，显示提示信息
         showToast(`已将书签移动到「${this.querySelector('.bookmark-title').textContent}」文件夹`);
         
-        // 查找当前正在查看的文件夹ID
-        let currentFolderId = '1'; // 默认为根文件夹
-        
-        // 如果有返回按钮，则表示我们不在根目录
-        const backButton = document.querySelector('.back-button');
-        if (backButton) {
-          // 获取当前显示的所有书签项中的第一个元素的父ID
-          // 这将是我们当前正在查看的文件夹的ID
-          const firstItem = document.querySelector('.bookmark-item:not(.back-button)');
-          if (firstItem) {
-            currentFolderId = firstItem.dataset.parentId;
-          }
-        }
-        
+        // 使用全局变量中保存的当前文件夹ID
         // 重新加载当前文件夹的内容
-        loadBookmarks(currentFolderId);
+        loadBookmarks(currentViewingFolderId);
       });
     } else {
       // 如果目标不是文件夹，按原来的逻辑处理（重新排序）
@@ -562,6 +928,12 @@ function createAddFolderButton(parentId) {
 
 // 加载书签
 function loadBookmarks(folderId = '1') {
+  // 更新当前查看的文件夹ID
+  currentViewingFolderId = folderId;
+  
+  // 更新导航路径显示
+  updateBreadcrumb(folderId);
+  
   chrome.bookmarks.getChildren(folderId, (bookmarks) => {
     const container = document.getElementById('bookmarks-grid');
     container.innerHTML = '';
@@ -573,11 +945,26 @@ function loadBookmarks(folderId = '1') {
         <img class="bookmark-icon" src="images/back-icon.png" alt="back">
         <p class="bookmark-title">返回上级</p>
       `;
-      backButton.addEventListener('click', () => {
-        chrome.bookmarks.get(folderId, (folder) => {
-          loadBookmarks(folder[0].parentId);
+      backButton.setAttribute('draggable', 'false'); // 不可拖拽，但可以接收拖拽
+      backButton.dataset.id = folderId; // 设置当前文件夹ID
+      
+      // 保存父文件夹ID到数据属性，以便于拖拽处理
+      chrome.bookmarks.get(folderId, (folder) => {
+        const parentId = folder[0].parentId;
+        backButton.dataset.parentId = parentId;
+        
+        // 点击事件 - 返回上级
+        backButton.addEventListener('click', () => {
+          loadBookmarks(parentId);
         });
       });
+      
+      // 添加拖拽相关事件
+      backButton.addEventListener('dragover', handleDragOver);
+      backButton.addEventListener('dragenter', handleBackButtonDragEnter);
+      backButton.addEventListener('dragleave', handleBackButtonDragLeave);
+      backButton.addEventListener('drop', handleBackButtonDrop);
+      
       container.appendChild(backButton);
       
       // 添加新建文件夹按钮
@@ -621,18 +1008,18 @@ function showToast(message) {
   }, 3000);
 }
 
-// 创建滤镜控制界面
-function createFilterControls() {
+// 创建设置面板界面
+function createSettingsPanel() {
   // 移除现有的控制器
-  const existingControl = document.getElementById('filter-panel');
+  const existingControl = document.getElementById('settings-panel');
   if (existingControl) {
     existingControl.remove();
   }
   
   // 创建折叠面板外层
-  const filterPanel = document.createElement('div');
-  filterPanel.id = 'filter-panel';
-  filterPanel.className = 'filter-panel collapsed';
+  const settingsPanel = document.createElement('div');
+  settingsPanel.id = 'settings-panel';
+  settingsPanel.className = 'settings-panel collapsed';
   
   // 创建折叠头部
   const panelHeader = document.createElement('div');
@@ -640,22 +1027,217 @@ function createFilterControls() {
   
   // 创建标题
   const title = document.createElement('span');
-  title.textContent = '背景滤镜';
+  title.textContent = '设置';
   title.className = 'panel-title';
   
-  // 添加展开/折叠图标
-  const toggleIcon = document.createElement('span');
-  toggleIcon.className = 'toggle-icon';
-  toggleIcon.innerHTML = '&#9776;';
+  // 添加设置图标
+  const settingsIcon = document.createElement('span');
+  settingsIcon.className = 'settings-icon';
+  settingsIcon.innerHTML = '&#9881;'; // 齿轮图标
   
-  panelHeader.appendChild(toggleIcon);
+  panelHeader.appendChild(settingsIcon);
   panelHeader.appendChild(title);
   
   // 点击头部切换折叠状态
   panelHeader.addEventListener('click', () => {
-    filterPanel.classList.toggle('collapsed');
+    settingsPanel.classList.toggle('collapsed');
   });
   
+  // 创建设置面板内容
+  const settingsContent = document.createElement('div');
+  settingsContent.className = 'settings-content';
+  
+  // 创建标签栏
+  const tabsContainer = document.createElement('div');
+  tabsContainer.className = 'settings-tabs';
+  
+  // 创建标签
+  const filterTab = document.createElement('div');
+  filterTab.className = 'settings-tab active';
+  filterTab.dataset.tab = 'filter';
+  filterTab.textContent = '背景滤镜';
+  
+  const generalTab = document.createElement('div');
+  generalTab.className = 'settings-tab';
+  generalTab.dataset.tab = 'general';
+  generalTab.textContent = '常规设置';
+  
+  const aboutTab = document.createElement('div');
+  aboutTab.className = 'settings-tab';
+  aboutTab.dataset.tab = 'about';
+  aboutTab.textContent = '关于';
+  
+  tabsContainer.appendChild(filterTab);
+  tabsContainer.appendChild(generalTab);
+  tabsContainer.appendChild(aboutTab);
+  
+  // 添加标签切换事件
+  const tabs = [filterTab, generalTab, aboutTab];
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // 移除所有标签的活动状态
+      tabs.forEach(t => t.classList.remove('active'));
+      // 添加当前标签的活动状态
+      tab.classList.add('active');
+      
+      // 切换对应的内容区域
+      const tabContents = settingsContent.querySelectorAll('.tab-content');
+      tabContents.forEach(content => {
+        content.classList.remove('active');
+        if (content.dataset.tab === tab.dataset.tab) {
+          content.classList.add('active');
+        }
+      });
+    });
+  });
+  
+  // 创建标签内容容器
+  
+  // 1. 滤镜设置标签内容
+  const filterContent = document.createElement('div');
+  filterContent.className = 'tab-content active';
+  filterContent.dataset.tab = 'filter';
+  
+  // 创建滤镜控制内容 - 复用现有的滤镜控制逻辑
+  const filterControls = createFilterControls();
+  filterContent.appendChild(filterControls);
+  
+  // 2. 常规设置标签内容
+  const generalContent = document.createElement('div');
+  generalContent.className = 'tab-content';
+  generalContent.dataset.tab = 'general';
+  generalContent.innerHTML = `
+    <div class="filter-control">
+      <label>布局设置</label>
+      <div class="slider-container">
+        <select class="settings-select" id="layout-select">
+          <option value="normal">标准布局</option>
+          <option value="compact">紧凑布局</option>
+          <option value="comfortable">宽松布局</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-control">
+      <label>最近访问显示项目数</label>
+      <div class="slider-container">
+        <input type="range" min="6" max="30" step="1" value="12" id="recent-count-slider">
+        <span class="slider-value" id="recent-count-value">12</span>
+      </div>
+    </div>
+  `;
+  
+  // 3. 关于标签内容
+  const aboutContent = document.createElement('div');
+  aboutContent.className = 'tab-content';
+  aboutContent.dataset.tab = 'about';
+  aboutContent.innerHTML = `
+    <div style="text-align: center; padding: 10px 0;">
+      <h3 style="margin-top: 0;">书签管理器</h3>
+      <p>版本: 1.0.0</p>
+      <p>一个简洁、美观的Edge书签管理扩展</p>
+      <div class="sponsor-section">
+        <h4 style="margin-top: 15px; margin-bottom: 10px;">赞助商</h4>
+        <img src="images/zanzhu.jpg" alt="赞助图片" class="sponsor-image">
+      </div>
+    </div>
+  `;
+  
+  // 添加所有标签内容到设置内容区域
+  settingsContent.appendChild(tabsContainer);
+  settingsContent.appendChild(filterContent);
+  settingsContent.appendChild(generalContent);
+  settingsContent.appendChild(aboutContent);
+  
+  // 构建最终面板
+  settingsPanel.appendChild(panelHeader);
+  settingsPanel.appendChild(settingsContent);
+  
+  // 添加到页面
+  document.body.appendChild(settingsPanel);
+  
+  // 初始化布局选择器
+  setTimeout(() => {
+    initLayoutSelector();
+    initRecentCountSlider();
+  }, 500);
+  
+  return settingsPanel;
+}
+
+// 初始化布局选择器
+function initLayoutSelector() {
+  const layoutSelect = document.getElementById('layout-select');
+  if (!layoutSelect) return;
+  
+  // 读取存储的布局设置
+  const storedLayout = localStorage.getItem('bookmark_layout_setting');
+  if (storedLayout) {
+    layoutSelect.value = storedLayout;
+    applyLayoutSetting(storedLayout);
+  }
+  
+  // 监听选择变化
+  layoutSelect.addEventListener('change', () => {
+    const selectedLayout = layoutSelect.value;
+    applyLayoutSetting(selectedLayout);
+    saveLayoutSetting(selectedLayout);
+  });
+}
+
+// 应用布局设置
+function applyLayoutSetting(layout) {
+  // 先移除所有布局类
+  document.body.classList.remove('normal-layout', 'compact-layout', 'comfortable-layout');
+  
+  // 添加选中的布局类
+  if (layout !== 'normal') {
+    document.body.classList.add(`${layout}-layout`);
+  }
+  
+  // 显示通知
+  showToast(`已切换到${layout === 'normal' ? '标准' : (layout === 'compact' ? '紧凑' : '宽松')}布局`);
+}
+
+// 保存布局设置
+function saveLayoutSetting(layout) {
+  localStorage.setItem('bookmark_layout_setting', layout);
+}
+
+// 初始化最近访问数量滑块
+function initRecentCountSlider() {
+  const recentCountSlider = document.getElementById('recent-count-slider');
+  const recentCountValue = document.getElementById('recent-count-value');
+  
+  if (!recentCountSlider || !recentCountValue) return;
+  
+  // 读取存储的值
+  const storedCount = localStorage.getItem('bookmark_recent_count');
+  if (storedCount) {
+    recentCountSlider.value = storedCount;
+    recentCountValue.textContent = storedCount;
+  } else {
+    // 设置默认值为12
+    localStorage.setItem('bookmark_recent_count', '12');
+  }
+  
+  // 监听滑块变化
+  recentCountSlider.addEventListener('input', () => {
+    const count = recentCountSlider.value;
+    recentCountValue.textContent = count;
+    localStorage.setItem('bookmark_recent_count', count);
+    
+    // 更新显示
+    displayRecentBookmarks();
+    
+    // 显示通知
+    showToast(`已设置最近访问显示项目数为 ${count}`);
+  });
+}
+
+
+
+// 创建滤镜控制界面 - 作为设置面板的一个标签页
+function createFilterControls() {
   // 创建控制面板内容
   const controlContent = document.createElement('div');
   controlContent.className = 'filter-controls';
@@ -733,12 +1315,7 @@ function createFilterControls() {
   resetButton.addEventListener('click', resetFilters);
   controlContent.appendChild(resetButton);
   
-  // 构建面板
-  filterPanel.appendChild(panelHeader);
-  filterPanel.appendChild(controlContent);
-  
-  // 添加到页面
-  document.body.appendChild(filterPanel);
+  return controlContent;
 }
 
 // 创建滤镜滑块
@@ -814,7 +1391,7 @@ function updateColorFilter(color, opacity) {
 // 获取当前所有滤镜设置
 function getCurrentFilters() {
   const filters = {};
-  document.querySelectorAll('#filter-panel input[type="range"][data-filter]').forEach(slider => {
+  document.querySelectorAll('#settings-panel input[type="range"][data-filter]').forEach(slider => {
     const type = slider.getAttribute('data-filter');
     const unit = type === 'blur' ? 'px' : (type === 'hue-rotate' ? 'deg' : '');
     filters[type] = `${slider.value}${unit}`;
@@ -833,7 +1410,7 @@ function applyFilters(filters) {
 
 // 重置所有滤镜
 function resetFilters() {
-  document.querySelectorAll('#filter-panel input[type="range"][data-filter]').forEach(slider => {
+  document.querySelectorAll('#settings-panel input[type="range"][data-filter]').forEach(slider => {
     const defaultValue = slider.getAttribute('data-default');
     slider.value = defaultValue;
     
@@ -850,7 +1427,7 @@ function resetFilters() {
   });
   
   // 重置颜色叠加
-  const colorOpacitySlider = document.querySelector('#filter-panel input[type="range"][min="0"][max="1"]');
+  const colorOpacitySlider = document.querySelector('#settings-panel input[type="range"][min="0"][max="1"]');
   if (colorOpacitySlider) {
     colorOpacitySlider.value = 0;
     const valueDisplay = colorOpacitySlider.nextElementSibling;
@@ -868,7 +1445,7 @@ function resetFilters() {
 function saveFiltersToStorage() {
   try {
     const filters = {};
-    document.querySelectorAll('#filter-panel input[type="range"][data-filter]').forEach(slider => {
+    document.querySelectorAll('#settings-panel input[type="range"][data-filter]').forEach(slider => {
       const type = slider.getAttribute('data-filter');
       filters[type] = slider.value;
     });
@@ -967,7 +1544,7 @@ function applyFilterSettingsToDOM(filterConfig) {
     
     // 应用滤镜设置到滤镜控件
     Object.entries(filterConfig.filters).forEach(([type, value]) => {
-      const slider = document.querySelector(`#filter-panel input[type="range"][data-filter="${type}"]`);
+      const slider = document.querySelector(`#settings-panel input[type="range"][data-filter="${type}"]`);
       if (slider) {
         slider.value = value;
         
@@ -990,13 +1567,13 @@ function applyFilterSettingsToDOM(filterConfig) {
     document.documentElement.style.setProperty('--background-filter', filterString);
     
     // 设置颜色选择器
-    const colorInput = document.querySelector('#filter-panel input[type="color"]');
+    const colorInput = document.querySelector('#settings-panel input[type="color"]');
     if (colorInput && filterConfig.colorSettings) {
       colorInput.value = filterConfig.colorSettings.color;
     }
     
     // 设置不透明度
-    const opacitySlider = document.querySelector('#filter-panel input[type="range"][min="0"][max="1"]');
+    const opacitySlider = document.querySelector('#settings-panel input[type="range"][min="0"][max="1"]');
     if (opacitySlider && filterConfig.colorSettings) {
       opacitySlider.value = filterConfig.colorSettings.opacity;
       
@@ -1025,8 +1602,8 @@ function loadFilterSettings() {
   console.log('使用同步方式加载滤镜设置...');
   
   try {
-    // 先创建滤镜面板
-    createFilterControls();
+    // 先创建设置面板
+    createSettingsPanel();
     
     // 加载滤镜设置
     const storedFilters = localStorage.getItem('bookmark_filter_settings');
@@ -1034,7 +1611,7 @@ function loadFilterSettings() {
     
     // 应用滤镜设置
     Object.entries(filters).forEach(([type, value]) => {
-      const slider = document.querySelector(`#filter-panel input[type="range"][data-filter="${type}"]`);
+      const slider = document.querySelector(`#settings-panel input[type="range"][data-filter="${type}"]`);
       if (slider) {
         slider.value = value;
         
@@ -1060,13 +1637,13 @@ function loadFilterSettings() {
       const colorSettings = JSON.parse(storedColorSettings);
       
       // 设置颜色选择器
-      const colorInput = document.querySelector('#filter-panel input[type="color"]');
+      const colorInput = document.querySelector('#settings-panel input[type="color"]');
       if (colorInput) {
         colorInput.value = colorSettings.color;
       }
       
       // 设置不透明度
-      const opacitySlider = document.querySelector('#filter-panel input[type="range"][min="0"][max="1"]');
+      const opacitySlider = document.querySelector('#settings-panel input[type="range"][min="0"][max="1"]');
       if (opacitySlider) {
         opacitySlider.value = colorSettings.opacity;
         
@@ -1090,13 +1667,35 @@ function loadFilterSettings() {
     console.error('加载滤镜设置时出错:', error);
     
     // 出错时使用默认设置
-    createFilterControls();
+    createSettingsPanel();
   }
 }
 
 // 初始化
+
+// 主前台页面初始化
+function initUI() {
+  // 初始化搜索功能
+  initSearchFeature();
+  
+  // 初始化最近访问区域
+  displayRecentBookmarks();
+  
+  // 应用保存的布局设置
+  applyInitialLayoutSetting();
+  
+  // 确保最近访问数量有默认值
+  if (!localStorage.getItem('bookmark_recent_count')) {
+    localStorage.setItem('bookmark_recent_count', '12');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('页面加载完成，开始初始化组件');
+  
+  // 初始化用户界面
+  initUI();
+  
   // 先加载滤镜设置，然后初始化其他组件
   loadFilterSettingsAsync().then((filterConfig) => {
     console.log('滤镜配置加载完成:', filterConfig);
@@ -1109,3 +1708,50 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBookmarks();
   });
 });
+
+// 应用初始布局设置
+function applyInitialLayoutSetting() {
+  const storedLayout = localStorage.getItem('bookmark_layout_setting');
+  if (storedLayout && storedLayout !== 'normal') {
+    document.body.classList.add(`${storedLayout}-layout`);
+  }
+}
+
+// 初始化搜索功能
+function initSearchFeature() {
+  const searchInput = document.getElementById('bookmark-search');
+  const searchResults = document.getElementById('search-results');
+  
+  // 添加输入事件
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    if (query.length >= 2) {
+      // 至少2个字符才开始搜索
+      searchBookmarks(query);
+    } else {
+      hideSearchResults();
+    }
+  });
+  
+  // 外部点击事件隐藏搜索结果
+  document.addEventListener('click', function(e) {
+    // 如果点击的不是搜索框和搜索结果区域，隐藏搜索结果
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+      hideSearchResults();
+    }
+  });
+  
+  // ESC键隐藏搜索结果
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      hideSearchResults();
+    }
+  });
+  
+  // 输入框聚焦时，如果有内容，显示搜索结果
+  searchInput.addEventListener('focus', function() {
+    if (this.value.trim().length >= 2) {
+      searchBookmarks(this.value.trim());
+    }
+  });
+}
