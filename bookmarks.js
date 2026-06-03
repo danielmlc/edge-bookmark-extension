@@ -63,9 +63,8 @@ function displayRecentBookmarks() {
       if (bookmarks.length === 0) {
         // 如果没有历史记录，显示提示
         const emptyMsg = document.createElement('span');
+        emptyMsg.className = 'recent-empty';
         emptyMsg.textContent = '暂无访问记录';
-        emptyMsg.style.color = '#999';
-        emptyMsg.style.fontStyle = 'italic';
         container.appendChild(emptyMsg);
         return;
       }
@@ -105,9 +104,8 @@ function displayRecentBookmarks() {
     } else {
       // 如果没有历史记录，显示提示
       const emptyMsg = document.createElement('span');
+      emptyMsg.className = 'recent-empty';
       emptyMsg.textContent = '暂无访问记录';
-      emptyMsg.style.color = '#999';
-      emptyMsg.style.fontStyle = 'italic';
       container.appendChild(emptyMsg);
     }
   } catch (error) {
@@ -115,11 +113,13 @@ function displayRecentBookmarks() {
     
     // 出错时显示错误消息
     const errorMsg = document.createElement('span');
+    errorMsg.className = 'recent-empty recent-error';
     errorMsg.textContent = '加载历史记录失败';
-    errorMsg.style.color = '#c00';
     container.appendChild(errorMsg);
   }
-}// 搜索书签函数
+}
+
+// 搜索书签函数
 function searchBookmarks(query) {
   // 确保搜索查询不为空
   if (!query || query.trim() === '') {
@@ -180,9 +180,7 @@ function displaySearchResults(results, query) {
     const title = document.createElement('p');
     title.className = 'search-result-title';
     
-    // 简单的关键词高亮逻辑
-    const titleText = bookmark.title;
-    title.textContent = titleText;
+    title.textContent = bookmark.title;
     
     content.appendChild(title);
     
@@ -327,7 +325,9 @@ function updateBreadcrumb(folderId) {
       }
     });
   });
-}// 默认的滤镜设置
+}
+
+// 默认的滤镜设置
 const DEFAULT_FILTER_SETTINGS = {
   brightness: '1.05',
   contrast: '1.1',
@@ -342,87 +342,53 @@ const DEFAULT_COLOR_SETTINGS = {
   opacity: '0'
 };
 
-// 获取必应每日图片
+// 从 localStorage 读取滤镜与颜色叠加配置
+function readFilterConfig() {
+  let filters = DEFAULT_FILTER_SETTINGS;
+  let colorSettings = DEFAULT_COLOR_SETTINGS;
+  try {
+    const storedFilters = localStorage.getItem('bookmark_filter_settings');
+    if (storedFilters) filters = JSON.parse(storedFilters);
+    const storedColorSettings = localStorage.getItem('bookmark_color_settings');
+    if (storedColorSettings) colorSettings = JSON.parse(storedColorSettings);
+  } catch (err) {
+    console.error('读取滤镜设置出错:', err);
+  }
+  return { filters, colorSettings };
+}
+
+// 将滤镜配置写入到 :root 的 CSS 变量上（控件 DOM 可能尚未创建）
+function applyFilterConfigToCSS(filterConfig) {
+  let filterString = '';
+  Object.entries(filterConfig.filters).forEach(([type, value]) => {
+    const unit = type === 'blur' ? 'px' : (type === 'hue-rotate' ? 'deg' : '');
+    filterString += `${type}(${value}${unit}) `;
+  });
+  document.documentElement.style.setProperty('--background-filter', filterString);
+
+  if (parseFloat(filterConfig.colorSettings.opacity) > 0) {
+    document.documentElement.style.setProperty('--overlay-color', filterConfig.colorSettings.color);
+    document.documentElement.style.setProperty('--overlay-opacity', filterConfig.colorSettings.opacity);
+    document.body.classList.add('color-overlay');
+  } else {
+    document.body.classList.remove('color-overlay');
+  }
+}
+
+// 获取必应每日图片并初始化设置面板
 async function setBingDailyBackground() {
   try {
-    // 首先检查并应用已保存的滤镜设置到页面上
-    // 这样即使在影响新创建的滤镜控件前，背景也将应用相应的滤镜效果
-    let filterConfig = {
-      filters: null,
-      colorSettings: null
-    };
-    
-    try {
-      // 加载滤镜设置
-      const storedFilters = localStorage.getItem('bookmark_filter_settings');
-      filterConfig.filters = storedFilters ? JSON.parse(storedFilters) : DEFAULT_FILTER_SETTINGS;
-      
-      // 加载颜色叠加设置
-      const storedColorSettings = localStorage.getItem('bookmark_color_settings');
-      filterConfig.colorSettings = storedColorSettings ? JSON.parse(storedColorSettings) : DEFAULT_COLOR_SETTINGS;
-      
-      console.log('在setBingDailyBackground中加载的滤镜配置:', filterConfig);
-      
-      // 在DOM上设置滤镜默认效果
-      let filterString = '';
-      Object.entries(filterConfig.filters).forEach(([type, value]) => {
-        const unit = type === 'blur' ? 'px' : (type === 'hue-rotate' ? 'deg' : '');
-        filterString += `${type}(${value}${unit}) `;
-      });
-      document.documentElement.style.setProperty('--background-filter', filterString);
-      
-      // 如果有颜色设置，应用颜色叠加
-      if (parseFloat(filterConfig.colorSettings.opacity) > 0) {
-        document.documentElement.style.setProperty('--overlay-color', filterConfig.colorSettings.color);
-        document.documentElement.style.setProperty('--overlay-opacity', filterConfig.colorSettings.opacity);
-        document.body.classList.add('color-overlay');
-      }
-    } catch (err) {
-      console.error('在setBingDailyBackground中加载滤镜设置出错:', err);
-      filterConfig.filters = DEFAULT_FILTER_SETTINGS;
-      filterConfig.colorSettings = DEFAULT_COLOR_SETTINGS;
-    }
-
-    // 获取必应每日图片
     const response = await fetch('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
     const data = await response.json();
     const imageUrl = 'https://www.bing.com' + data.images[0].url;
     document.body.style.backgroundImage = `url(${imageUrl})`;
-    
-    // 添加设置面板界面
-    createSettingsPanel();
-    
-    // 将滤镜设置应用到新创建的滤镜控件上
-    applyFilterSettingsToDOM(filterConfig);
-    
   } catch (error) {
     console.error('Failed to fetch Bing daily image:', error);
     document.body.style.backgroundColor = '#f0f0f0';
-    
-    // 即使图像加载失败仍需要应用滤镜设置
-    try {
-      // 加载滤镜设置
-      const storedFilters = localStorage.getItem('bookmark_filter_settings');
-      const filters = storedFilters ? JSON.parse(storedFilters) : DEFAULT_FILTER_SETTINGS;
-      
-      // 加载颜色叠加设置
-      const storedColorSettings = localStorage.getItem('bookmark_color_settings');
-      const colorSettings = storedColorSettings ? JSON.parse(storedColorSettings) : DEFAULT_COLOR_SETTINGS;
-      
-      // 创建设置面板
-      createSettingsPanel();
-      
-      // 应用滤镜设置
-      applyFilterSettingsToDOM({
-        filters: filters,
-        colorSettings: colorSettings
-      });
-    } catch (err) {
-      console.error('应用滤镜设置时出错:', err);
-      // 出错时仍创建控件但使用默认设置
-      createFilterControls();
-    }
   }
+
+  createSettingsPanel();
+  applyFilterSettingsToDOM(readFilterConfig());
 }
 
 // 获取书签图标
@@ -834,8 +800,6 @@ function showCreateFolderDialog(parentId) {
   // 创建标题
   const title = document.createElement('h3');
   title.textContent = '创建新文件夹';
-  title.style.margin = '0 0 15px 0';
-  title.style.fontSize = '16px';
   dialog.appendChild(title);
   
   // 创建输入框
@@ -1131,12 +1095,12 @@ function createSettingsPanel() {
   aboutContent.className = 'tab-content';
   aboutContent.dataset.tab = 'about';
   aboutContent.innerHTML = `
-    <div style="text-align: center; padding: 10px 0;">
-      <h3 style="margin-top: 0;">书签管理器</h3>
-      <p>版本: 1.0.0</p>
-      <p>一个简洁、美观的Edge书签管理扩展</p>
+    <div class="about-section">
+      <h3>书签管理器</h3>
+      <p class="about-version">版本 1.0.0</p>
+      <p class="about-desc">一个简洁、美观的 Edge 书签管理扩展</p>
       <div class="sponsor-section">
-        <h4 style="margin-top: 15px; margin-bottom: 10px;">赞助商</h4>
+        <h4>赞助商</h4>
         <img src="images/zanzhu.jpg" alt="赞助图片" class="sponsor-image">
       </div>
     </div>
@@ -1484,191 +1448,41 @@ function clearStoredFilters() {
 }
 
 // 从 localStorage 异步加载滤镜设置
-async function loadFilterSettingsAsync() {
-  console.log('正在加载滤镜设置...');
-  
-  // 先获取存储的滤镜设置
-  let filterConfig = {
-    filters: null,
-    colorSettings: null
-  };
-  
-  try {
-    // 加载滤镜设置
-    const storedFilters = localStorage.getItem('bookmark_filter_settings');
-    filterConfig.filters = storedFilters ? JSON.parse(storedFilters) : DEFAULT_FILTER_SETTINGS;
-    
-    // 加载颜色叠加设置
-    const storedColorSettings = localStorage.getItem('bookmark_color_settings');
-    filterConfig.colorSettings = storedColorSettings ? JSON.parse(storedColorSettings) : DEFAULT_COLOR_SETTINGS;
-    
-    console.log('滤镜设置数据加载成功:', filterConfig);
-    
-    // 在DOM上设置滤镜默认效果
-    let filterString = '';
-    Object.entries(filterConfig.filters).forEach(([type, value]) => {
-      const unit = type === 'blur' ? 'px' : (type === 'hue-rotate' ? 'deg' : '');
-      filterString += `${type}(${value}${unit}) `;
-    });
-    document.documentElement.style.setProperty('--background-filter', filterString);
-    
-    // 如果有颜色设置，应用颜色叠加
-    if (parseFloat(filterConfig.colorSettings.opacity) > 0) {
-      document.documentElement.style.setProperty('--overlay-color', filterConfig.colorSettings.color);
-      document.documentElement.style.setProperty('--overlay-opacity', filterConfig.colorSettings.opacity);
-      document.body.classList.add('color-overlay');
-    }
-    
-    return filterConfig;
-  } catch (error) {
-    console.error('加载滤镜设置数据时出错:', error);
-    return {
+// 将滤镜设置同步到设置面板的控件上（需在面板创建后调用）
+function applyFilterSettingsToDOM(filterConfig) {
+  if (!filterConfig || !filterConfig.filters) {
+    filterConfig = {
       filters: DEFAULT_FILTER_SETTINGS,
       colorSettings: DEFAULT_COLOR_SETTINGS
     };
   }
-}
 
-// 将滤镜设置应用到DOM元素
-function applyFilterSettingsToDOM(filterConfig) {
-  try {
-    console.log('开始将滤镜设置应用到DOM:', filterConfig);
-    
-    if (!filterConfig || !filterConfig.filters) {
-      console.warn('滤镜配置为空，使用默认设置');
-      filterConfig = {
-        filters: DEFAULT_FILTER_SETTINGS,
-        colorSettings: DEFAULT_COLOR_SETTINGS
-      };
+  // 把数值同步到滤镜滑块
+  Object.entries(filterConfig.filters).forEach(([type, value]) => {
+    const slider = document.querySelector(`#settings-panel input[type="range"][data-filter="${type}"]`);
+    if (!slider) return;
+    slider.value = value;
+    const valueDisplay = slider.nextElementSibling;
+    if (valueDisplay && valueDisplay.classList.contains('slider-value')) {
+      valueDisplay.textContent = value;
     }
-    
-    // 应用滤镜设置到滤镜控件
-    Object.entries(filterConfig.filters).forEach(([type, value]) => {
-      const slider = document.querySelector(`#settings-panel input[type="range"][data-filter="${type}"]`);
-      if (slider) {
-        slider.value = value;
-        
-        // 更新显示的数值
-        const valueDisplay = slider.nextElementSibling;
-        if (valueDisplay && valueDisplay.classList.contains('slider-value')) {
-          valueDisplay.textContent = value;
-        }
-      } else {
-        console.warn(`无法找到滤镜控件: ${type}`);
-      }
-    });
-    
-    // 应用滤镜到页面背景
-    let filterString = '';
-    Object.entries(filterConfig.filters).forEach(([type, value]) => {
-      const unit = type === 'blur' ? 'px' : (type === 'hue-rotate' ? 'deg' : '');
-      filterString += `${type}(${value}${unit}) `;
-    });
-    document.documentElement.style.setProperty('--background-filter', filterString);
-    
-    // 设置颜色选择器
+  });
+
+  // 把颜色叠加同步到颜色选择器与透明度滑块
+  if (filterConfig.colorSettings) {
     const colorInput = document.querySelector('#settings-panel input[type="color"]');
-    if (colorInput && filterConfig.colorSettings) {
-      colorInput.value = filterConfig.colorSettings.color;
-    }
-    
-    // 设置不透明度
-    const opacitySlider = document.querySelector('#settings-panel input[type="range"][min="0"][max="1"]');
-    if (opacitySlider && filterConfig.colorSettings) {
-      opacitySlider.value = filterConfig.colorSettings.opacity;
-      
-      // 更新显示的数值
-      const valueDisplay = opacitySlider.nextElementSibling;
-      if (valueDisplay) {
-        valueDisplay.textContent = filterConfig.colorSettings.opacity;
-      }
-    }
-    
-    // 应用颜色叠加
-    if (filterConfig.colorSettings && parseFloat(filterConfig.colorSettings.opacity) > 0) {
-      document.documentElement.style.setProperty('--overlay-color', filterConfig.colorSettings.color);
-      document.documentElement.style.setProperty('--overlay-opacity', filterConfig.colorSettings.opacity);
-      document.body.classList.add('color-overlay');
-    }
-    
-    console.log('滤镜设置已成功应用到DOM');
-  } catch (error) {
-    console.error('应用滤镜设置到DOM时出错:', error);
-  }
-}
+    if (colorInput) colorInput.value = filterConfig.colorSettings.color;
 
-// 兼容原有函数调用
-function loadFilterSettings() {
-  console.log('使用同步方式加载滤镜设置...');
-  
-  try {
-    // 先创建设置面板
-    createSettingsPanel();
-    
-    // 加载滤镜设置
-    const storedFilters = localStorage.getItem('bookmark_filter_settings');
-    const filters = storedFilters ? JSON.parse(storedFilters) : DEFAULT_FILTER_SETTINGS;
-    
-    // 应用滤镜设置
-    Object.entries(filters).forEach(([type, value]) => {
-      const slider = document.querySelector(`#settings-panel input[type="range"][data-filter="${type}"]`);
-      if (slider) {
-        slider.value = value;
-        
-        // 更新显示的数值
-        const valueDisplay = slider.nextElementSibling;
-        if (valueDisplay && valueDisplay.classList.contains('slider-value')) {
-          valueDisplay.textContent = value;
-        }
-        
-        // 更新滤镜显示
-        const unit = type === 'blur' ? 'px' : (type === 'hue-rotate' ? 'deg' : '');
-        const filter = `${value}${unit}`;
-        document.documentElement.style.setProperty(`--${type}`, filter);
-      }
-    });
-    
-    // 应用滤镜
-    applyFilters(filters);
-    
-    // 加载颜色叠加设置
-    const storedColorSettings = localStorage.getItem('bookmark_color_settings');
-    if (storedColorSettings) {
-      const colorSettings = JSON.parse(storedColorSettings);
-      
-      // 设置颜色选择器
-      const colorInput = document.querySelector('#settings-panel input[type="color"]');
-      if (colorInput) {
-        colorInput.value = colorSettings.color;
-      }
-      
-      // 设置不透明度
-      const opacitySlider = document.querySelector('#settings-panel input[type="range"][min="0"][max="1"]');
-      if (opacitySlider) {
-        opacitySlider.value = colorSettings.opacity;
-        
-        // 更新显示的数值
-        const valueDisplay = opacitySlider.nextElementSibling;
-        if (valueDisplay) {
-          valueDisplay.textContent = colorSettings.opacity;
-        }
-      }
-      
-      // 应用颜色叠加
-      if (parseFloat(colorSettings.opacity) > 0) {
-        document.documentElement.style.setProperty('--overlay-color', colorSettings.color);
-        document.documentElement.style.setProperty('--overlay-opacity', colorSettings.opacity);
-        document.body.classList.add('color-overlay');
-      }
+    const opacitySlider = document.querySelector('#settings-panel input[type="range"][min="0"][max="1"]');
+    if (opacitySlider) {
+      opacitySlider.value = filterConfig.colorSettings.opacity;
+      const valueDisplay = opacitySlider.nextElementSibling;
+      if (valueDisplay) valueDisplay.textContent = filterConfig.colorSettings.opacity;
     }
-    
-    console.log('滤镜设置加载完成');
-  } catch (error) {
-    console.error('加载滤镜设置时出错:', error);
-    
-    // 出错时使用默认设置
-    createSettingsPanel();
   }
+
+  // 同时把配置写入到 CSS 变量
+  applyFilterConfigToCSS(filterConfig);
 }
 
 // 初始化
@@ -1691,22 +1505,11 @@ function initUI() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('页面加载完成，开始初始化组件');
-  
-  // 初始化用户界面
   initUI();
-  
-  // 先加载滤镜设置，然后初始化其他组件
-  loadFilterSettingsAsync().then((filterConfig) => {
-    console.log('滤镜配置加载完成:', filterConfig);
-    setBingDailyBackground();
-    loadBookmarks();
-  }).catch(error => {
-    console.error('加载滤镜配置出错:', error);
-    // 出错时仍然初始化页面
-    setBingDailyBackground();
-    loadBookmarks();
-  });
+  // 先把滤镜写到 CSS 变量上，避免背景图加载后再叠加导致的闪烁
+  applyFilterConfigToCSS(readFilterConfig());
+  setBingDailyBackground();
+  loadBookmarks();
 });
 
 // 应用初始布局设置

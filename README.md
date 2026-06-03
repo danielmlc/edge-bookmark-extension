@@ -14,7 +14,7 @@
 
 ## 截图
 
-![书签管理器](screenshot.png)
+> 截图待补充（screenshot.png）。
 
 ## 鸣谢
 
