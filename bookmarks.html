@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>书签 · 标签页</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<title>Markly</title>
 <style>
 :root {
   --accent: #6366f1;
@@ -17,7 +14,7 @@
   --gap: 18px;
   --tile: 116px;
   --font-zh: -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-  --font-display: "Space Grotesk", var(--font-zh);
+  --font-display: "Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --ease: cubic-bezier(.22,.61,.36,1);
 }
 
@@ -312,16 +309,6 @@ html[data-theme="light"] .toast { background:#1b1d24; color:#fff; border:0; }
 <div id="wall"></div>
 <div id="root"></div>
 
-<script src="lib/react.min.js"></script>
-<script src="lib/react-dom.min.js"></script>
-
-<script src="dist/data.js"></script>
-<script src="dist/store.js"></script>
-<script src="dist/ui.js"></script>
-<script src="dist/dialogs.js"></script>
-<script src="dist/settings.js"></script>
-<script src="dist/cards.js"></script>
-<script src="dist/app.js"></script>
-<script src="dist/main.js"></script>
+<script src="dist/bundle.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // dialogs.js — modal dialogs. Exposed on window.
-(function () {
+import React from 'react';
   const { isFolder } = window.BMData;
 
   function Overlay({ children, onClose, shake }) {
@@ -228,4 +228,3 @@
       </Overlay>
     );
   };
-})();

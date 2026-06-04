@@ -1,6 +1,6 @@
+import React from 'react';
 // store.js — bookmark store backed by chrome.bookmarks API.
 // Tags are stored in localStorage since chrome doesn't natively support them.
-(function () {
   const { isFolder } = window.BMData;
   const INDEX = window.BMData.INDEX; // shared reference
 
@@ -20,6 +20,10 @@
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => fn());
 
+  // The bookmarks-bar id varies by browser/profile (Edge uses '1', some Chrome
+  // profiles use other ids), so detect it at runtime instead of hardcoding.
+  let BAR_ID = '1';
+
   function buildIndex(node, parent) {
     node.parentId = parent ? parent.id : null;
     if (!node.children) {
@@ -35,6 +39,9 @@
     // clear index
     for (const k in INDEX) delete INDEX[k];
     buildIndex(tree[0], null);
+    // first child of the root is the bookmarks bar
+    const bar = tree[0].children && tree[0].children[0];
+    if (bar) BAR_ID = bar.id;
     emit();
   }
 
@@ -45,6 +52,7 @@
 
   const Store = {
     LS, read, write,
+    rootId: () => BAR_ID,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     node: (id) => INDEX[id],
     children: (id) => (INDEX[id] && INDEX[id].children) || [],
@@ -61,12 +69,12 @@
       q = (q || '').trim().toLowerCase(); if (q.length < 2) return [];
       const out = [];
       (function walk(n) {
-        if (n.id !== '0' && n.id !== '1') {
+        if (n.id !== '0' && n.id !== BAR_ID) {
           const hay = ((n.title || '') + ' ' + (n.url || '') + ' ' + (n.tags || []).join(' ')).toLowerCase();
           if (hay.includes(q)) out.push(n);
         }
         (n.children || []).forEach(walk);
-      })(INDEX['1'] || INDEX['0'] || Object.values(INDEX)[0] || {});
+      })(INDEX[BAR_ID] || INDEX['0'] || Object.values(INDEX)[0] || {});
       return out.slice(0, 10);
     },
 
@@ -187,13 +195,13 @@
         if (n.children) o.children = n.children.map(clean);
         return o;
       }
-      const root = INDEX['1'];
+      const root = INDEX[BAR_ID];
       return JSON.stringify(root ? root.children.map(clean) : [], null, 2);
     },
     async importJSON(text, parentId) {
       let data; try { data = JSON.parse(text); } catch (e) { return false; }
       if (!Array.isArray(data)) data = [data];
-      const targetId = parentId || '1';
+      const targetId = parentId || BAR_ID;
       const map = read(LS.tags, {});
       async function build(o, pid) {
         if (o.children !== undefined) {
@@ -220,4 +228,3 @@
     return Store;
   };
   window.BMStore = Store;
-})();

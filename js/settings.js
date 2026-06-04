@@ -1,5 +1,5 @@
 // settings.js — slide-in settings panel. window.SettingsPanel
-(function () {
+import React from 'react';
   function Slider({ label, value, min, max, step, unit, fmt, onChange }) {
     return (
       <div className="ctrl">
@@ -160,4 +160,3 @@
       </>
     );
   };
-})();

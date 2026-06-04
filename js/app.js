@@ -1,5 +1,5 @@
 // app.js — main orchestrator. window.App
-(function () {
+import React from 'react';
   const { isFolder, hostOf, INDEX } = window.BMData;
 
   function useClock() {
@@ -97,7 +97,7 @@
     const store = window.useStore();
     const now = useClock();
     const [ready, setReady] = React.useState(false);
-    const [currentId, setCurrentId] = React.useState('1');
+    const [currentId, setCurrentId] = React.useState(null);
     const [activeTag, setActiveTag] = React.useState(null);
     const [selectMode, setSelectMode] = React.useState(false);
     const [selected, setSelected] = React.useState([]);
@@ -106,7 +106,7 @@
     const [pop, setPop] = React.useState(null);
 
     React.useEffect(() => {
-      store.init().then(() => setReady(true));
+      store.init().then(() => { setCurrentId(store.rootId()); setReady(true); });
     }, []);
 
     const theme = store.theme(), density = store.layout(), accent = store.accent();
@@ -153,10 +153,10 @@
       );
     }
 
-    const current = store.node(currentId) || store.node('1');
+    const current = store.node(currentId) || store.node(store.rootId());
     if (!current) return null;
     const crumbs = store.breadcrumb(currentId);
-    const isRoot = currentId === '1';
+    const isRoot = currentId === store.rootId();
 
     let items;
     if (activeTag) {
@@ -336,4 +336,3 @@
       </div>
     );
   };
-})();

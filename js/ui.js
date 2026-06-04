@@ -1,5 +1,5 @@
 // ui.js — icons, favicon tiles, wallpapers (Bing + gradients), toast, popover.
-(function () {
+import React from 'react';
   const { brandFor, letterFor, isFolder } = window.BMData;
 
   // ---------- icons ----------
@@ -116,4 +116,3 @@
       </div>
     );
   };
-})();

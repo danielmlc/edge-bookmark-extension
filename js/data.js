@@ -1,6 +1,5 @@
 // data.js — brand colors, favicon helpers. Exposed on window.BMData.
 // INDEX and TREE are populated by store.js after chrome.bookmarks loads.
-(function () {
   const BRAND = {
     'github.com': ['#1f2328', '#fff'],
     'figma.com': ['#0d99ff', '#fff'],
@@ -58,4 +57,3 @@
     BRAND, PALETTE, hostOf, brandFor, letterFor,
     isFolder: (n) => !!n && Array.isArray(n.children),
   };
-})();

@@ -7,8 +7,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "build": "esbuild js/data.js js/store.js js/ui.js js/dialogs.js js/settings.js js/cards.js js/app.js js/main.js --loader:.js=jsx --outdir=dist --platform=browser",
-    "watch": "esbuild js/data.js js/store.js js/ui.js js/dialogs.js js/settings.js js/cards.js js/app.js js/main.js --loader:.js=jsx --outdir=dist --platform=browser --watch"
+    "build": "esbuild js/index.js --bundle --loader:.js=jsx --outfile=dist/bundle.js --platform=browser",
+    "watch": "esbuild js/index.js --bundle --loader:.js=jsx --outfile=dist/bundle.js --platform=browser --watch",
+    "package": "npm run build && powershell -ExecutionPolicy Bypass -File scripts/package.ps1"
   },
   "repository": {
     "type": "git",
@@ -24,5 +25,9 @@
   "homepage": "https://github.com/danielmlc/edge-bookmark-extension#readme",
   "devDependencies": {
     "esbuild": "^0.28.0"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

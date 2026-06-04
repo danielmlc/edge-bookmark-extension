@@ -1,5 +1,5 @@
 // cards.js — bookmark grid, tiles, drag & drop. window.Grid
-(function () {
+import React from 'react';
   const { isFolder, hostOf } = window.BMData;
 
   function Tile({ node, onOpen, onMore, selectMode, selected, onToggle, drag, favSize }) {
@@ -142,4 +142,3 @@
       </div>
     );
   };
-})();
