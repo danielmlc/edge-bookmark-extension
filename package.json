@@ -1,0 +1,28 @@
+{
+  "name": "edge-bookmark-extension",
+  "version": "1.0.0",
+  "description": "",
+  "main": "background.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "esbuild js/data.js js/store.js js/ui.js js/dialogs.js js/settings.js js/cards.js js/app.js js/main.js --loader:.js=jsx --outdir=dist --platform=browser",
+    "watch": "esbuild js/data.js js/store.js js/ui.js js/dialogs.js js/settings.js js/cards.js js/app.js js/main.js --loader:.js=jsx --outdir=dist --platform=browser --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielmlc/edge-bookmark-extension.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/danielmlc/edge-bookmark-extension/issues"
+  },
+  "homepage": "https://github.com/danielmlc/edge-bookmark-extension#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}
